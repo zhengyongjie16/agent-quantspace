@@ -15,6 +15,7 @@
 - `generate_sample_data.py`：为 demo 的显式品种列表生成确定性的合成 OHLCV 数据。
 - `run_strategy_reports.py`：基于已有日线 Parquet 编排两个横截面示例和两个时序示例，并经 `write_research_bundle` 写出 HTML 研究报告和 PNG 图表。
 - `import_panda_data_demo.py`：将 PandaData bar 导入本地 `DataManager` 存储。
+- `import_futu_data.py`：将 Futu 历史 K 线标准化后导入本地 `DataManager` 存储。
 
 ## 使用方式
 
@@ -28,6 +29,6 @@ uv run python -m scripts.run_strategy_reports --data-root /path/to/data
 ```
 
 `generate_sample_data.py` 只是确定性的 fixture 辅助脚本。真实研究输出应先通过 PandaData
-导入，或自行把真实日线 Parquet 放到 `data/market/1d/`，再运行策略脚本。
+或 Futu 导入，或自行把真实日线 Parquet 放到 `data/market/1d/`，再运行策略脚本。
 
 私有一次性研究脚本应放在私有仓库，不要进入本开源仓库。

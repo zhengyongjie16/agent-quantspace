@@ -7,6 +7,7 @@ import pytest
 
 PUBLIC_MODULES = [
     "skills.ingest",
+    "skills.ingest.futu",
     "skills.ingest.panda_data",
     "skills.ingest.symbol_map",
     "skills.store.data_manager",
@@ -54,9 +55,19 @@ def test_public_modules_import() -> None:
 
 
 def test_ingest_public_api() -> None:
-    from skills.ingest import PandaDataClient, to_panda_data_symbol, to_quantspace_symbol
+    from skills.ingest import (
+        FutuClient,
+        PandaDataClient,
+        to_futu_symbol,
+        to_panda_data_symbol,
+        to_quantspace_futu_symbol,
+        to_quantspace_symbol,
+    )
 
     assert PandaDataClient is not None
+    assert FutuClient is not None
+    assert to_futu_symbol("SHSE.600519") == "SH.600519"
+    assert to_quantspace_futu_symbol("US.AAPL") == "NASDAQ.AAPL"
     assert to_panda_data_symbol("SHSE.510300") == "510300.SH"
     assert to_quantspace_symbol("510300.SH") == "SHSE.510300"
 

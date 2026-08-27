@@ -23,6 +23,8 @@ helpers.
   research bundles and PNG charts through `write_research_bundle`.
 - `import_panda_data_demo.py`: imports PandaData bars into local
   `DataManager` storage.
+- `import_futu_data.py`: normalizes Futu historical K-lines and imports them
+  into local `DataManager` storage.
 
 ## Usage
 
@@ -36,7 +38,7 @@ uv run python -m scripts.run_strategy_reports --data-root /path/to/data
 ```
 
 `generate_sample_data.py` is only a deterministic fixture helper. For real
-research outputs, import or place real daily Parquet data under
-`data/market/1d/` before running the strategy scripts.
+research outputs, import from PandaData or Futu, or place real daily Parquet
+data under `data/market/1d/` before running the strategy scripts.
 
 Keep private one-off research scripts outside this repository.

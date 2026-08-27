@@ -83,6 +83,24 @@ def _safe_segment(value: str, *, label: str) -> str:
     return value
 
 
+def _physical_artifact_id(artifact_id: str) -> str:
+    """Map a logical artifact ID to a filename-safe platform representation."""
+    return artifact_id.replace(":", "%3A") if os.name == "nt" else artifact_id
+
+
+def _resolved_path_for_comparison(path: Path) -> Path:
+    """Normalize Windows extended paths before comparing containment."""
+    resolved = path.resolve()
+    if os.name != "nt":
+        return resolved
+    raw = os.fspath(resolved)
+    if raw.startswith("\\\\?\\UNC\\"):
+        raw = "\\\\" + raw[8:]
+    elif raw.startswith("\\\\?\\"):
+        raw = raw[4:]
+    return Path(os.path.normcase(raw))
+
+
 class DataManagerArtifactStore:
     """Persist JSON research artifacts under ``data/factors/<namespace>/``."""
 
@@ -131,7 +149,7 @@ class DataManagerArtifactStore:
             # Exclusive create in the validated directory; never open a
             # predictable caller-planted ``*.json.tmp`` symlink.
             fd, tmp_name = tempfile.mkstemp(
-                prefix=f".{artifact_id}.",
+                prefix=f".{_physical_artifact_id(artifact_id)}.",
                 suffix=".json.tmp",
                 dir=str(path.parent),
             )
@@ -238,7 +256,7 @@ class DataManagerArtifactStore:
         fd: int | None = None
         try:
             fd, tmp_name = tempfile.mkstemp(
-                prefix=f".{artifact_id}.",
+                prefix=f".{_physical_artifact_id(artifact_id)}.",
                 suffix=".json.tmp",
                 dir=str(path.parent),
             )
@@ -655,17 +673,21 @@ class DataManagerArtifactStore:
         )
 
     def _artifact_path(self, namespace: str, kind: str, artifact_id: str) -> Path:
+        # ``:`` is valid in the logical artifact identity but reserved in a
+        # Windows filename. Keep the protocol-visible ID unchanged and only
+        # encode the physical filename on platforms that need it.
+        filename_id = _physical_artifact_id(artifact_id)
         return (
             self._dm.root
             / "factors"
             / namespace
             / "artifacts"
             / kind
-            / f"{artifact_id}.json"
+            / f"{filename_id}.json"
         )
 
     def _factors_root(self) -> Path:
-        return (self._dm.root / "factors").resolve()
+        return _resolved_path_for_comparison(self._dm.root / "factors")
 
     def _assert_namespace_contained(self, namespace: str) -> None:
         """Reject namespace directories that symlink/resolve outside data/factors."""
@@ -680,7 +702,7 @@ class DataManagerArtifactStore:
             ) from exc
         ns_dir = self._dm.root / "factors" / namespace
         if ns_dir.exists() or ns_dir.is_symlink():
-            resolved_ns = ns_dir.resolve()
+            resolved_ns = _resolved_path_for_comparison(ns_dir)
             try:
                 resolved_ns.relative_to(factors_root)
             except ValueError as exc:
@@ -707,7 +729,7 @@ class DataManagerArtifactStore:
         for part in relative.parts:
             cursor = cursor / part
             if cursor.exists() or cursor.is_symlink():
-                resolved_cursor = cursor.resolve()
+                resolved_cursor = _resolved_path_for_comparison(cursor)
                 try:
                     resolved_cursor.relative_to(factors_root)
                 except ValueError as exc:
@@ -715,7 +737,7 @@ class DataManagerArtifactStore:
                         FailureCode.ARTIFACT_PERSIST_FAILED,
                         "resolved path escaped factors root",
                     ) from exc
-        resolved = path.resolve()
+        resolved = _resolved_path_for_comparison(path)
         try:
             resolved.relative_to(factors_root)
         except ValueError as exc:
@@ -724,7 +746,7 @@ class DataManagerArtifactStore:
                 "resolved path escaped factors root",
             ) from exc
         if logical_ns.exists() or logical_ns.is_symlink():
-            resolved_ns = logical_ns.resolve()
+            resolved_ns = _resolved_path_for_comparison(logical_ns)
             try:
                 resolved.relative_to(resolved_ns)
             except ValueError as exc:

@@ -80,7 +80,7 @@ Skills 是 AI 开发策略前应该优先调用的公共能力。
 
 | Skill | 主要导入 | 用途 |
 |---|---|---|
-| `ingest` | `from skills.ingest import PandaDataClient` | 获取数据、默认 PandaData 接入、符号转换 |
+| `ingest` | `from skills.ingest import PandaDataClient, FutuClient` | PandaData/Futu 数据接入、标准化和符号转换 |
 | `store` | `from skills.store.data_manager import DataManager` | 市场数据、因子、回测、模型元数据 |
 | `compute` | `from skills.compute.indicators import trend_score` | 策略无关的 OHLCV 指标、标签、工具与 `Factor` wrapper |
 | `strategy` | `from skills.strategy import StrategyResult` | 通用策略契约、选取类型与横截面/时序目标权重 helper |
@@ -112,12 +112,13 @@ uv run python -m pytest tests/
 ```
 
 fixture 数据是合成 OHLCV，不需要 PandaData 凭据，结果可复现，也可以随时重新生成。它会写入
-`data/market/`；真实研究时，用 PandaData 或其他遵循同一数据模型的 adapter 导入日线 Parquet 即可。
+`data/market/`；真实研究时，用 PandaData、Futu 或其他遵循同一数据模型的 adapter 导入日线 Parquet 即可。
 
 可选 extras：
 
 ```bash
 uv sync --extra panda_data  # PandaData SDK
+uv sync --extra futu        # Futu OpenAPI SDK
 uv sync --extra analyze     # 绘图、时序诊断和并行分析
 uv sync --extra ml          # 可选 PyCaret ML 辅助模块
 uv sync --extra query       # 可选 DuckDB 查询能力
@@ -175,6 +176,35 @@ bars = client.get_fund_daily(
 前、后复权行情分别使用 `get_fund_daily_pre` 和
 `get_fund_daily_post`。三个基金日线方法会自动将超过 365 个自然日的区间
 分块下载并合并；ETF 申赎数据使用 `get_fund_etf_*`，不包含在此处理范围内。
+
+## Futu 设置
+
+Futu skill 的 CLI 和参考文档已放在 `.agents/skills/futuapi/`。QuantSpace
+通过 `skills.ingest.FutuClient` 复用同一个 `futu-api` SDK，并将历史 K 线
+标准化后交给 `DataManager` 保存；策略和回测仍然只读取本地 Parquet。
+
+准备 OpenD（版本 >= 10.4.6408）并安装项目可选依赖：
+
+```bash
+uv sync --extra futu
+```
+
+OpenD 默认监听 `127.0.0.1:11111`，也可以设置 `FUTU_OPEND_HOST` 和
+`FUTU_OPEND_PORT`。先导入少量标的验证链路：
+
+```bash
+uv run python -m scripts.import_futu_data \
+  --symbols SHSE.600519 SZSE.000001 \
+  --start-date 2024-01-01 \
+  --end-date 2024-12-31 \
+  --ktype 1d \
+  --rehab none
+```
+
+`rehab=none` 写入 `data/market/1d/`；`forward` 或 `backward` 写入
+`data/market/1d_adj/`。Futu 历史 K 线按标的消耗额度，导入脚本默认先调用
+`get_history_kl_quota` 做额度预检。若只想交互式查看行情，可直接使用
+`.agents/skills/futuapi/scripts/quote/get_kline.py`。
 
 ## 数据模型
 

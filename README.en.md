@@ -100,7 +100,7 @@ writing new research code.
 
 | Skill | Main import | Purpose |
 |---|---|---|
-| `ingest` | `from skills.ingest import PandaDataClient` | Data ingestion, default PandaData access, symbol conversion |
+| `ingest` | `from skills.ingest import PandaDataClient, FutuClient` | PandaData/Futu ingestion, normalization, and symbol conversion |
 | `store` | `from skills.store.data_manager import DataManager` | Market data, factors, backtests, model metadata |
 | `compute` | `from skills.compute.indicators import trend_score` | Indicators, labels, utilities, generic factor examples |
 | `strategy` | `from skills.strategy import StrategyResult` | Reusable contracts, cross-sectional/time-series types, and target-weight helpers |
@@ -136,13 +136,14 @@ uv run python -m pytest tests/
 
 The fixture data is synthetic and deterministic, so the demos are reproducible
 and safe to rerun. It is written under `data/market/`; for real research, replace
-it with daily Parquet files from PandaData or another adapter that follows the
-same data model.
+it with daily Parquet files from PandaData, Futu, or another adapter that
+follows the same data model.
 
 Optional extras:
 
 ```bash
 uv sync --extra panda_data  # PandaData SDK
+uv sync --extra futu        # Futu OpenAPI SDK
 uv sync --extra analyze     # plotting, time-series diagnostics, parallel analysis
 uv sync --extra ml          # optional PyCaret-based ML helpers
 uv sync --extra query       # optional DuckDB querying
@@ -202,6 +203,37 @@ bars = client.get_fund_daily(
 
 Use `get_fund_daily_pre` or `get_fund_daily_post` for adjusted prices and
 `get_fund_etf_*` for ETF creation/redemption datasets.
+
+## Futu Setup
+
+The Futu skill's CLI and reference material live under
+`.agents/skills/futuapi/`. QuantSpace exposes the reusable
+`skills.ingest.FutuClient`, which uses the same `futu-api` SDK, normalizes
+historical K-lines, and persists them through `DataManager`. Strategies and
+backtests continue to read local Parquet files.
+
+Start OpenD (version >= 10.4.6408) and install the project extra:
+
+```bash
+uv sync --extra futu
+```
+
+OpenD defaults to `127.0.0.1:11111`; override it with `FUTU_OPEND_HOST` and
+`FUTU_OPEND_PORT`. Verify the full ingestion path with a small explicit universe:
+
+```bash
+uv run python -m scripts.import_futu_data \
+  --symbols SHSE.600519 SZSE.000001 \
+  --start-date 2024-01-01 \
+  --end-date 2024-12-31 \
+  --ktype 1d \
+  --rehab none
+```
+
+`rehab=none` writes to `data/market/1d/`; `forward` or `backward` writes to
+`data/market/1d_adj/`. Historical K-lines consume quota per symbol, so the
+import script performs a `get_history_kl_quota` preflight by default. For an
+interactive quote check, use `.agents/skills/futuapi/scripts/quote/get_kline.py`.
 
 ## Data Model
 

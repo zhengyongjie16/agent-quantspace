@@ -1,13 +1,13 @@
 ---
 name: ingest
-description: Use when tasks need PandaData/PandaAI stock, fund, ETF, index, or futures data, reference data, adjustment factors, futures tick downloads, or symbol conversion.
+description: Use when tasks need PandaData/PandaAI or Futu stock, fund, ETF, index, or futures data, reference data, adjustment factors, futures tick downloads, or symbol conversion.
 ---
 
-# PandaData Ingest
+# Market Data Ingest
 
 Use this skill when a task needs stock, listed-fund/ETF, index, or futures
 market data; reference data; adjustment factors; or futures tick data from the
-PandaData SDK.
+PandaData or Futu SDKs.
 
 ## Prerequisites
 
@@ -15,17 +15,52 @@ PandaData SDK.
 - Set `PANDA_DATA_USERNAME` and `PANDA_DATA_PASSWORD` in the environment.
 - `PandaDataClient` fetches data only. Persist normalized OHLCV with
   `skills.store.data_manager.DataManager`.
+- Install Futu support with `uv sync --extra futu`.
+- Futu quote data requires OpenD >= 10.4.6408 running at
+  `FUTU_OPEND_HOST:FUTU_OPEND_PORT` (defaults to `127.0.0.1:11111`).
+- `FutuClient` fetches data only. Persist normalized OHLCV with
+  `skills.store.data_manager.DataManager`.
 
 ## Public API
 
 ```python
 from skills.ingest import PandaDataClient
 from skills.ingest import to_panda_data_symbol, to_quantspace_symbol
+from skills.ingest import FutuClient, to_futu_symbol, to_quantspace_futu_symbol
 ```
 
 `PandaDataClient` accepts QuantSpace symbols such as `SHSE.510300` and
 panda_data native symbols such as `510300.SH`. Returned `symbol` columns are
 converted back to QuantSpace format by default.
+
+`FutuClient` accepts QuantSpace symbols such as `SHSE.600519` and Futu native
+symbols such as `SH.600519`. It returns a single-symbol OHLCV frame indexed by
+timezone-naive `eob`. Use it as a context manager when importing multiple
+symbols so one OpenD quote connection is reused.
+
+```python
+from skills.ingest import FutuClient
+from skills.store.data_manager import DataManager
+
+with FutuClient() as client:
+    bars = client.fetch_history_kline(
+        "SHSE.600519",
+        start="2024-01-01",
+        end="2024-12-31",
+        ktype="1d",
+        rehab="none",
+    )
+DataManager().save_symbol("SHSE.600519", bars, frequency="1d", source="futu_none")
+```
+
+Futu's `rehab="forward"` / `"backward"` prices must be stored under
+`frequency="1d_adj"` (or the corresponding `<freq>_adj` directory key). The
+upstream K-line type remains `"1d"`; `_adj` is only the local storage key.
+
+The installed Futu skill's CLI remains useful for interactive inspection, for
+example `.agents/skills/futuapi/scripts/quote/get_kline.py`. The reusable
+adapter does not import that CLI's `common.py`, because it performs a live
+OpenD check at import time.
 
 ## Wrapped Endpoints
 

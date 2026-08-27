@@ -32,6 +32,8 @@ from skills.store.data_manager import DataManager
 DEFAULT_SYMBOL = "SHSE.510300"
 # Always fetch the full field set so cum_adj_factor is available for local adjust.
 RAW_FIELDS = ["open", "high", "low", "close", "volume", "amount", "cum_adj_factor"]
+# Kept for the historical ``download_csi300_etf`` compatibility entrypoint.
+FIELDS = RAW_FIELDS
 OUT_COLS = ["open", "high", "low", "close", "volume"]
 
 
@@ -138,7 +140,39 @@ def download_etf(
 
 # Backward-compatible alias.
 def download_csi300_etf(start_date, end_date, data_root=None, adjust="none") -> None:
-    download_etf(DEFAULT_SYMBOL, start_date, end_date, data_root, adjust)
+    """Preserve the original single-call fund endpoint contract.
+
+    The newer ``download_etf`` entrypoint intentionally fetches unadjusted
+    bars in one-year chunks and applies adjustment locally. This alias remains
+    for callers that relied on PandaData's historical adjusted endpoints.
+    """
+    method_name = {
+        "none": "get_fund_daily",
+        "pre": "get_fund_daily_pre",
+        "post": "get_fund_daily_post",
+    }.get(adjust)
+    if method_name is None:
+        raise ValueError("adjust must be one of: none, pre, post")
+
+    client = PandaDataClient()
+    raw = getattr(client, method_name)(
+        start_date,
+        end_date,
+        symbol=DEFAULT_SYMBOL,
+        fields=FIELDS,
+    )
+    bars = _normalize(raw)
+    if bars.empty:
+        print(f"{DEFAULT_SYMBOL}: no data returned")
+        return
+
+    dm = DataManager(data_root=data_root)
+    out_bars = bars[OUT_COLS].copy()
+    dm.save_symbol(DEFAULT_SYMBOL, out_bars, frequency="1d", source="panda_data_fund")
+    print(
+        f"Saved {len(out_bars)} rows for {DEFAULT_SYMBOL} [{adjust}/1d]: "
+        f"{out_bars.index.min().date()} -> {out_bars.index.max().date()}"
+    )
 
 
 def main() -> None:

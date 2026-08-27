@@ -32,6 +32,7 @@ report = [
 ]
 ts = ["tsfresh", "joblib"]
 panda_data = ["panda_data>=0.0.12", "requests>=2.32.0"]
+futu = ["futu-api>=10.4.6408"]
 
 [tool.uv]
 package = false
