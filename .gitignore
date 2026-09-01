@@ -53,6 +53,9 @@ user.json
 tmp/
 output/
 docs/
+!/docs/
+/docs/*
+!/docs/hk_us_futu_research_workflow_build_plan.md
 # Track only Phase 01 factor_mining documentation contract tests under tests/docs/.
 # Un-ignore the directory for traversal, re-ignore contents, then allowlist two files.
 !tests/docs/
@@ -60,6 +63,12 @@ tests/docs/*
 !tests/docs/test_factor_mining_skill_roles.py
 !tests/docs/test_coding_agent_declarations.py
 lessons/
+# Generated research reports are local by default; public strategy examples remain tracked.
+reports/*
+!reports/README.md
+!reports/README-zh.md
+!reports/strategy_examples/
+!reports/strategy_examples/**
 reports/local
 .wrangler/
 ossutil_output/
