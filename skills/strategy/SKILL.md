@@ -34,7 +34,8 @@ from skills.strategy.time_series import signal_to_single_asset_weights
   does not predeclare persistence or Tracking APIs.
 - `cross_sectional/` owns reusable ranking, selection, exit, risk-control, and
   modular research types, including equal-rank, equal-vote, rolling IC,
-  rolling ICIR, and correlation-aware maximum-ICIR factor combinations.
+  rolling ICIR, and correlation-aware maximum-IC / maximum-ICIR factor
+  combinations.
 - `hold_weights_on_calendar` maps signal-day target weights onto the full trading
   calendar (forward hold, flat before the first signal) before backtesting.
 - `time_series.py` owns signal-to-weight conversion and a research-only
@@ -75,15 +76,17 @@ result = combine_factor_scores(
 )
 ```
 
-Supported methods are equal rank, equal vote, rolling IC, rolling ICIR, and
-correlation-aware maximum ICIR. `result.factor_weights` is the factor-level
-voice in the composite score; `result.target_weights` is the separate asset
-allocation produced after Top-N selection. Maximum ICIR requires tidy
-correlation history with columns `eob`, `factor_a`, `factor_b`, and
-`correlation`. The public combination entry point always applies factor
-direction and daily cross-sectional normalization. Use `normalization="rank"`
-for robust percentile ranks or `normalization="zscore"` to retain relative
-score distance; do not pre-normalize inputs.
+Supported methods are equal rank, equal vote, rolling IC, rolling ICIR,
+correlation-aware maximum IC, and correlation-aware maximum ICIR.
+`max_ic` applies the inverse rolling factor-correlation matrix to rolling mean
+IC; `max_icir` applies it to rolling ICIR. Both require tidy correlation
+history with columns `eob`, `factor_a`, `factor_b`, and `correlation`.
+`result.factor_weights` is the factor-level voice in the composite score;
+`result.target_weights` is the separate asset allocation produced after Top-N
+selection. The public combination entry point always applies factor direction
+and daily cross-sectional normalization. Use `normalization="rank"` for robust
+percentile ranks or `normalization="zscore"` to retain relative score distance;
+do not pre-normalize inputs.
 
 ## Time-series recipe
 

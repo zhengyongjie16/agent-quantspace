@@ -11,7 +11,14 @@ import pandas as pd
 
 from skills.strategy.cross_sectional.selection import top_n_weights
 
-CombinationMethod = Literal["equal_rank", "equal_vote", "rolling_ic", "rolling_icir", "max_icir"]
+CombinationMethod = Literal[
+    "equal_rank",
+    "equal_vote",
+    "rolling_ic",
+    "rolling_icir",
+    "max_ic",
+    "max_icir",
+]
 NormalizationMethod = Literal["rank", "zscore"]
 
 
@@ -164,8 +171,8 @@ def estimate_factor_weights(
         raise ValueError(f"{method} requires dynamic_config")
     if dynamic_config.max_weight * len(names) < 1.0 - 1e-12:
         raise ValueError("max_weight is infeasible for the factor count")
-    if method == "max_icir" and correlation_history is None:
-        raise ValueError("max_icir requires correlation_history")
+    if method in {"max_ic", "max_icir"} and correlation_history is None:
+        raise ValueError(f"{method} requires correlation_history")
 
     available = (
         ic_history.reindex(index=dates, columns=names).shift(dynamic_config.availability_delay)
@@ -176,7 +183,7 @@ def estimate_factor_weights(
     std = available.rolling(
         dynamic_config.lookback, min_periods=dynamic_config.min_periods
     ).std(ddof=1)
-    raw = mean if method == "rolling_ic" else mean.div(std.replace(0.0, np.nan))
+    raw = mean if method in {"rolling_ic", "max_ic"} else mean.div(std.replace(0.0, np.nan))
     correlations = None
     if correlation_history is not None:
         correlations = _correlation_history_wide(
@@ -189,7 +196,7 @@ def estimate_factor_weights(
     rows: list[np.ndarray] = []
     for date in raw.index:
         vector = raw.loc[date].to_numpy(dtype=float)
-        if method == "max_icir":
+        if method in {"max_ic", "max_icir"}:
             assert correlations is not None
             values = correlations.loc[date]
             corr = np.eye(len(names))

@@ -269,8 +269,8 @@ def _write_charts(
     )
 
     for plot_start, filename, title in (
-        (start_date, "equity_curves_full.png", "Five combinations · full sample"),
-        (oos_start, "equity_curves_oos.png", "Five combinations · out-of-sample"),
+        (start_date, "equity_curves_full.png", "Six combinations · full sample"),
+        (oos_start, "equity_curves_oos.png", "Six combinations · out-of-sample"),
     ):
         (output / filename).write_bytes(
             plot_equity_comparison(equities, start=plot_start, title=title)
@@ -530,7 +530,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         (daily_ic.horizon == baseline) & (daily_ic.lag == 0) & daily_ic.factor.isin(core)
     ]
     ic_history = chosen_ic.pivot(index="eob", columns="factor", values="ic").reindex(prices.index)
-    methods = ["equal_rank", "equal_vote", "rolling_ic", "rolling_icir", "max_icir"]
+    methods = ["equal_rank", "equal_vote", "rolling_ic", "rolling_icir", "max_ic", "max_icir"]
     performance_rows, weight_rows, target_rows, equity_rows = [], [], [], []
     combination_results = {}
     for method in methods:
@@ -538,7 +538,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         if method not in {"equal_rank", "equal_vote"}:
             kwargs = {
                 "ic_history": ic_history,
-                "correlation_history": correlation_history if method == "max_icir" else None,
+                "correlation_history": correlation_history if method in {"max_ic", "max_icir"} else None,
                 "dynamic_config": DynamicFactorWeightConfig(
                     availability_delay=SIGNAL_LAG + baseline,
                     lookback=252,
@@ -730,7 +730,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         "1. Horizon IC 描述预测期限；Lagged IC 描述同一信号延迟使用后的衰减，两者不是同一个指标。",
         "2. 累计收益窗口扩大时 Horizon IC 可以先上升；这不代表信号没有随等待而失效。",
         "3. 调仓周期需要同时看对应 Horizon IC、周期末 Lagged IC、排名自相关、换手和含成本绩效。",
-        "4. 因子相关性表示重复信息；最大 ICIR 通过收缩相关矩阵降低重复暴露。",
+        "4. 因子相关性表示重复信息；最大 IC 与最大 ICIR 均通过收缩相关矩阵降低重复暴露，前者基于滚动平均 IC，后者基于滚动 ICIR。",
         "",
         "## 复现",
         "",

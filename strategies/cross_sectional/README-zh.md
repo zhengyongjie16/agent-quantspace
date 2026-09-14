@@ -19,7 +19,7 @@ panel OHLCV -> factors/rules/ML ranks -> weights -> VectorBacktester -> metrics
   expanding PCA 多模型分数/权重。
 - `workflows/run_demo.py`：可直接运行的公开策略 workflow。
 - `workflows/run_lesson06_multifactor.py`：可复现 Horizon/Lagged IC、相关性、
-  调仓周期与五种多因子组合的研究 workflow。
+  调仓周期与六种多因子组合的研究 workflow。
 - `workflows/run_lesson07_etf18_logdiff_pca_ml.py`：18 ETF LogDiff + expanding
   PCA + ols/lasso/rf/xgboost 横截面 rank 对照与 Top 3 等权回测。
 

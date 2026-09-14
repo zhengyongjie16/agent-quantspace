@@ -174,9 +174,9 @@ def test_equal_vote_missing_policy_is_consistent_across_normalizations(
 
 
 @pytest.mark.parametrize(
-    "method", ["equal_rank", "equal_vote", "rolling_ic", "rolling_icir", "max_icir"]
+    "method", ["equal_rank", "equal_vote", "rolling_ic", "rolling_icir", "max_ic", "max_icir"]
 )
-def test_five_methods_produce_valid_weights(method: str) -> None:
+def test_six_methods_produce_valid_weights(method: str) -> None:
     factors = _factors()
     dates = next(iter(factors.values())).index
     kwargs = {}
@@ -185,7 +185,7 @@ def test_five_methods_produce_valid_weights(method: str) -> None:
             "ic_history": _ic_history(dates),
             "dynamic_config": DynamicFactorWeightConfig(availability_delay=6),
         }
-        if method == "max_icir":
+        if method in {"max_ic", "max_icir"}:
             kwargs["correlation_history"] = _correlation_history(dates)
     result = combine_factor_scores(
         factors, method=method, directions=_directions(), normalization="rank", top_n=3, **kwargs
@@ -227,11 +227,12 @@ def test_dynamic_weights_are_causal_and_fallback_to_equal() -> None:
     )
 
 
-def test_max_icir_requires_tidy_correlation_history() -> None:
+@pytest.mark.parametrize("method", ["max_ic", "max_icir"])
+def test_maximum_ic_methods_require_tidy_correlation_history(method: str) -> None:
     dates = _factors().get("a").index
     with pytest.raises(ValueError, match="correlation_history"):
         estimate_factor_weights(
-            method="max_icir",
+            method=method,  # type: ignore[arg-type]
             factor_names=["a", "b", "c"],
             dates=dates,
             ic_history=_ic_history(dates),
@@ -271,14 +272,47 @@ def test_max_icir_reduces_duplicate_factor_exposure() -> None:
     assert adjusted.iloc[-1]["c"] > plain.iloc[-1]["c"]
 
 
-def test_future_correlation_mutation_does_not_change_available_weights() -> None:
+def test_max_ic_reduces_duplicate_factor_exposure() -> None:
+    dates = pd.bdate_range("2020-01-01", periods=80)
+    x = np.arange(len(dates), dtype=float)
+    ic = pd.DataFrame(
+        {
+            "a": 0.04 + np.sin(x / 5.0) * 0.01,
+            "b": 0.04 + np.sin(x / 5.0) * 0.01,
+            "c": 0.02 + np.sin(x / 7.0) * 0.005,
+        },
+        index=dates,
+    )
+    config = DynamicFactorWeightConfig(
+        availability_delay=1, lookback=20, min_periods=10, max_weight=0.8
+    )
+    plain = estimate_factor_weights(
+        method="rolling_ic",
+        factor_names=["a", "b", "c"],
+        dates=dates,
+        ic_history=ic,
+        dynamic_config=config,
+    )
+    adjusted = estimate_factor_weights(
+        method="max_ic",
+        factor_names=["a", "b", "c"],
+        dates=dates,
+        ic_history=ic,
+        correlation_history=_correlation_history(dates, ab=0.99),
+        dynamic_config=config,
+    )
+    assert adjusted.iloc[-1]["c"] > plain.iloc[-1]["c"]
+
+
+@pytest.mark.parametrize("method", ["max_ic", "max_icir"])
+def test_future_correlation_mutation_does_not_change_available_weights(method: str) -> None:
     dates = pd.bdate_range("2020-01-01", periods=80)
     config = DynamicFactorWeightConfig(
         availability_delay=6, lookback=20, min_periods=10, max_weight=0.8
     )
     history = _correlation_history(dates)
     before = estimate_factor_weights(
-        method="max_icir",
+        method=method,  # type: ignore[arg-type]
         factor_names=["a", "b", "c"],
         dates=dates,
         ic_history=_ic_history(dates),
@@ -288,7 +322,7 @@ def test_future_correlation_mutation_does_not_change_available_weights() -> None
     mutated = history.copy()
     mutated.loc[mutated["eob"] >= dates[50], "correlation"] = 0.99
     after = estimate_factor_weights(
-        method="max_icir",
+        method=method,  # type: ignore[arg-type]
         factor_names=["a", "b", "c"],
         dates=dates,
         ic_history=_ic_history(dates),
