@@ -70,11 +70,11 @@ def test_multifactor_information_to_costed_backtest_pipeline() -> None:
         correlation_shrinkage=0.5,
     )
 
-    for method in ["equal_rank", "equal_vote", "rolling_ic", "rolling_icir", "max_icir"]:
+    for method in ["equal_rank", "equal_vote", "rolling_ic", "rolling_icir", "max_ic", "max_icir"]:
         kwargs = {}
         if method not in {"equal_rank", "equal_vote"}:
             kwargs = {"ic_history": ic_history, "dynamic_config": config}
-        if method == "max_icir":
+        if method in {"max_ic", "max_icir"}:
             kwargs["correlation_history"] = correlations
         combination = combine_factor_scores(
             factors,

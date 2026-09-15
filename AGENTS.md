@@ -38,6 +38,14 @@ QuantSpace is an AI-native quantitative research framework.
 It combines reusable skills, strategy domains, and thin orchestration scripts so
 AI agents can turn research ideas into tested strategy code inside the project.
 
+## Coding Agent Compatibility
+
+- This root `AGENTS.md` is the canonical, tool-neutral instruction source for the repository.
+- Start the coding agent from the repository root so it can discover this file and the project configuration.
+- Coding-agent-specific instruction files, when required by a tool, should reference this file instead of duplicating its rules.
+- Tool-specific rules may add integration details, but they must not redefine the project structure, Python environment, data conventions, or verification commands maintained here.
+- After this file or a tool-specific instruction file changes, start a new agent session so the current instructions are loaded again.
+
 ## Agent Protocol
 
 1. Read this file before working in the repository.
@@ -116,6 +124,13 @@ names are declarations, not a product whitelist.
 ## Python Environment
 
 - Package manager: `uv`.
+- The repository and course runtime is Python 3.11, selected by the root `.python-version` file.
+- `pyproject.toml` and the top-level `requires-python` in `uv.lock` describe the supported package range, currently Python `>=3.10`; they do not override the repository runtime selected by `.python-version`.
+- Python 3.12, 3.13, or later entries in `uv.lock` resolution markers are dependency-solver branches for those interpreters, not evidence that this repository requires those Python versions.
+- Before changing the Python environment, read `.python-version`, `pyproject.toml`, and the top of `uv.lock` together.
+- Do not delete or rewrite `.python-version`, change `requires-python`, or use `--ignore-requires-python` as an installation workaround unless the user explicitly requests a supported-version change.
+- Standard course environment installation: `uv sync --locked --extra panda_data --extra query`.
+- If the three Python-version sources appear inconsistent, stop and report their exact values before modifying files or reinstalling the environment.
 - Run tests: `uv run python -m pytest tests/`.
 - Run lint: `uv run ruff check .`.
 - Optional PandaData SDK: `uv sync --extra panda_data`.
